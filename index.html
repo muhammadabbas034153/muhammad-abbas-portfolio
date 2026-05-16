@@ -1,0 +1,1378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Three Phase AC Voltage Controller | Advanced Interactive Module</title>
+    <meta name="description" content="A professional IEEE-style educational portal for Three Phase AC Voltage Controllers, including theory, simulations, hardware design, MATLAB/Simulink guidance, and viva preparation.">
+    <meta name="author" content="Muhammad Abbas">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // Tailwind is loaded by CDN to keep the GitHub Pages build as a single deployable HTML file.
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        ieee: {
+                            navy: '#0b1f3a',
+                            blue: '#005f9e',
+                            cyan: '#00a6d6',
+                            gold: '#f6b73c'
+                        }
+                    },
+                    boxShadow: {
+                        soft: '0 18px 55px rgba(15, 23, 42, 0.10)'
+                    }
+                }
+            }
+        };
+    </script>
+    <script defer src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/js/all.min.js"></script>
+    <!-- Chosen Palette: Slate and Sky Neutral. Background: stone-50, Surface: white, Text: slate-800, Accents: sky-700 and amber-600. -->
+    <!-- Application Structure Plan: The SPA uses a dashboard-style layout with a fixed sidebar for navigation and a scrollable main content area. This structure allows users (students/researchers) to easily jump between highly dense technical sections (Theory, Math, Simulation, Hardware) without losing context. Interactive charts are placed centrally in the Simulation section to allow immediate visual feedback on firing angle changes. -->
+    <!-- Visualization & Content Choices: 
+         - Report Info: Waveform theory and harmonics.
+         - Goal: Compare & Change. Allow user to visualize the effect of firing angle on output and THD.
+         - Viz/Presentation Method: Interactive Line and Bar charts using Chart.js.
+         - Interaction: Range slider to alter firing angle (alpha), which dynamically recalculates and redraws the waveforms and harmonic spectrum.
+         - Justification: Hands-on manipulation is the best way to understand phase angle control.
+         - Library/Method: Chart.js (Canvas).
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Lora:ital,wght@0,400;0,600;0,700;1,400&display=swap');
+
+        :root {
+            --bg: #f6f8fb;
+            --surface: rgba(255, 255, 255, 0.88);
+            --surface-solid: #ffffff;
+            --text: #162033;
+            --muted: #5d6b82;
+            --line: rgba(148, 163, 184, 0.28);
+            --accent: #006fb9;
+            --accent-2: #00a6d6;
+            --gold: #f6b73c;
+            --shadow: 0 22px 65px rgba(15, 23, 42, 0.10);
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            min-height: 100vh;
+            font-family: 'Inter', sans-serif;
+            color: var(--text);
+            background:
+                radial-gradient(circle at 15% 15%, rgba(0, 166, 214, 0.13), transparent 28rem),
+                radial-gradient(circle at 84% 18%, rgba(246, 183, 60, 0.12), transparent 24rem),
+                linear-gradient(135deg, #f7fbff 0%, var(--bg) 52%, #eef3f8 100%);
+            transition: background-color 240ms ease, color 240ms ease;
+        }
+
+        .dark body,
+        body.dark {
+            --bg: #08111f;
+            --surface: rgba(15, 23, 42, 0.82);
+            --surface-solid: #101a2b;
+            --text: #e7eef8;
+            --muted: #a5b4c7;
+            --line: rgba(148, 163, 184, 0.18);
+            --accent: #38bdf8;
+            --accent-2: #67e8f9;
+            --gold: #facc15;
+            --shadow: 0 24px 80px rgba(0, 0, 0, 0.28);
+            background:
+                radial-gradient(circle at 12% 18%, rgba(56, 189, 248, 0.16), transparent 28rem),
+                radial-gradient(circle at 80% 14%, rgba(250, 204, 21, 0.09), transparent 24rem),
+                linear-gradient(135deg, #070d18 0%, #08111f 52%, #0d1728 100%);
+        }
+
+        h1, h2, h3, h4, .font-serif {
+            font-family: 'Lora', serif;
+        }
+
+        /* Subtle engineering background grid and phase traces. */
+        .engineering-bg::before,
+        .engineering-bg::after {
+            content: "";
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .engineering-bg::before {
+            opacity: 0.36;
+            background-image:
+                linear-gradient(rgba(0, 95, 158, 0.07) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 95, 158, 0.07) 1px, transparent 1px);
+            background-size: 44px 44px;
+            mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.78), transparent 78%);
+        }
+
+        .engineering-bg::after {
+            opacity: 0.24;
+            background:
+                linear-gradient(115deg, transparent 0 42%, rgba(0, 166, 214, 0.14) 42.2% 42.7%, transparent 43%),
+                linear-gradient(65deg, transparent 0 58%, rgba(246, 183, 60, 0.14) 58.2% 58.7%, transparent 59%);
+        }
+
+        .app-shell {
+            position: relative;
+            z-index: 1;
+        }
+
+        .glass-panel {
+            background: var(--surface);
+            border: 1px solid var(--line);
+            box-shadow: var(--shadow);
+            backdrop-filter: blur(18px);
+        }
+
+        .content-section {
+            animation: sectionIn 360ms ease both;
+            scroll-margin-top: 1rem;
+        }
+
+        @keyframes sectionIn {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .content-section header {
+            padding: 1.75rem;
+            border: 1px solid var(--line);
+            border-radius: 1.25rem;
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(232, 246, 255, 0.75));
+            box-shadow: 0 18px 45px rgba(15, 23, 42, 0.07);
+        }
+
+        .dark .content-section header {
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.92), rgba(12, 33, 56, 0.74));
+        }
+
+        .content-section > div,
+        .content-section details,
+        .content-section table,
+        .content-section .math-block {
+            transition: transform 220ms ease, box-shadow 220ms ease, border-color 220ms ease, background-color 220ms ease;
+        }
+
+        .content-section > div:hover,
+        .content-section details:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 18px 45px rgba(15, 23, 42, 0.09);
+        }
+
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 920px;
+            margin: 0 auto;
+            height: clamp(320px, 42vh, 520px);
+        }
+
+        .math-block {
+            background: linear-gradient(135deg, rgba(241, 245, 249, 0.94), rgba(224, 242, 254, 0.72));
+            padding: 1.15rem;
+            border-left: 4px solid var(--accent);
+            border-radius: 0.75rem;
+            font-family: 'Times New Roman', Times, serif;
+            font-size: 1.1rem;
+            overflow-x: auto;
+        }
+
+        .dark .math-block {
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.94), rgba(12, 33, 56, 0.72));
+        }
+
+        .nav-item {
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            width: 100%;
+            border-radius: 0.8rem;
+            color: #d9e6f4;
+            transition: background-color 180ms ease, color 180ms ease, transform 180ms ease;
+        }
+
+        .nav-item:hover {
+            background: rgba(255, 255, 255, 0.10);
+            color: #ffffff;
+            transform: translateX(3px);
+        }
+
+        .nav-item.active {
+            background: linear-gradient(135deg, rgba(56, 189, 248, 0.23), rgba(246, 183, 60, 0.12));
+            color: #ffffff;
+            font-weight: 700;
+            box-shadow: inset 3px 0 0 var(--gold);
+        }
+
+        .sidebar-profile {
+            background: linear-gradient(135deg, rgba(255,255,255,0.15), rgba(255,255,255,0.06));
+            border: 1px solid rgba(255,255,255,0.18);
+            backdrop-filter: blur(16px);
+        }
+
+        .tab-btn {
+            transition: color 180ms ease, border-color 180ms ease, background-color 180ms ease;
+        }
+
+        .tab-btn.active {
+            border-bottom: 2px solid var(--accent);
+            color: var(--accent);
+            font-weight: 700;
+        }
+
+        .circuit-node {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            border: 2px solid #334155;
+            font-weight: bold;
+        }
+
+        .scr-symbol {
+            display: inline-block;
+            padding: 0 10px;
+            position: relative;
+            font-family: monospace;
+            font-size: 1.2rem;
+        }
+
+        .loader {
+            position: fixed;
+            inset: 0;
+            z-index: 80;
+            display: grid;
+            place-items: center;
+            background: #07111f;
+            color: white;
+            transition: opacity 420ms ease, visibility 420ms ease;
+        }
+
+        .loader.is-hidden {
+            opacity: 0;
+            visibility: hidden;
+        }
+
+        .loader-ring {
+            width: 72px;
+            height: 72px;
+            border: 4px solid rgba(255,255,255,0.16);
+            border-top-color: var(--gold);
+            border-right-color: var(--accent-2);
+            border-radius: 999px;
+            animation: spin 900ms linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .dark .bg-white,
+        body.dark .bg-white {
+            background-color: rgba(15, 23, 42, 0.86) !important;
+        }
+
+        .dark .bg-stone-50,
+        body.dark .bg-stone-50 {
+            background-color: rgba(15, 23, 42, 0.52) !important;
+        }
+
+        .dark .text-slate-900,
+        .dark .text-slate-800,
+        .dark .text-slate-700,
+        body.dark .text-slate-900,
+        body.dark .text-slate-800,
+        body.dark .text-slate-700 {
+            color: #e7eef8 !important;
+        }
+
+        .dark .text-slate-600,
+        .dark .text-slate-500,
+        body.dark .text-slate-600,
+        body.dark .text-slate-500 {
+            color: #a5b4c7 !important;
+        }
+
+        .dark .border-stone-200,
+        .dark .border-stone-300,
+        .dark .border-slate-200,
+        body.dark .border-stone-200,
+        body.dark .border-stone-300,
+        body.dark .border-slate-200 {
+            border-color: rgba(148, 163, 184, 0.20) !important;
+        }
+
+        ::-webkit-scrollbar { width: 10px; height: 10px; }
+        ::-webkit-scrollbar-track { background: rgba(148, 163, 184, 0.12); }
+        ::-webkit-scrollbar-thumb { background: rgba(0, 95, 158, 0.45); border-radius: 999px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(0, 95, 158, 0.68); }
+
+        @media (max-width: 767px) {
+            .content-section header {
+                padding: 1.25rem;
+            }
+
+            .chart-container {
+                min-height: 300px;
+            }
+        }
+    </style>
+</head>
+<body class="engineering-bg flex h-screen overflow-hidden">
+
+    <!-- Loading animation gives the single-page application a polished first paint. -->
+    <div id="page-loader" class="loader">
+        <div class="text-center">
+            <div class="loader-ring mx-auto mb-5"></div>
+            <p class="text-sm uppercase tracking-[0.32em] text-sky-100">Initializing Module</p>
+        </div>
+    </div>
+
+    <aside class="app-shell w-80 bg-[#081a2f] text-white border-r border-white/10 flex flex-col h-full shadow-2xl z-30 flex-shrink-0 transition-transform duration-300" id="sidebar">
+        <div class="p-6 border-b border-white/10">
+            <div class="flex items-center justify-between gap-4">
+                <div>
+                    <p class="text-xs uppercase tracking-[0.24em] text-sky-200">IEEE Style Portal</p>
+                    <h1 class="text-xl font-bold leading-tight mt-2">Three Phase AC Voltage Controller</h1>
+                </div>
+                <button id="dark-mode-toggle" class="h-10 w-10 rounded-full bg-white/10 hover:bg-white/20 transition-colors" type="button" aria-label="Toggle dark mode">
+                    <i class="fa-solid fa-moon"></i>
+                </button>
+            </div>
+            <div class="sidebar-profile mt-6 rounded-2xl p-4">
+                <div class="flex items-center gap-4">
+                    <img src="avatar-square.jpg" alt="Portrait of Muhammad Abbas" class="h-16 w-16 rounded-2xl object-cover ring-2 ring-sky-300/70" loading="eager">
+                    <div>
+                        <h2 class="font-bold text-white">Muhammad Abbas</h2>
+                        <p class="text-xs text-sky-100">Electrical Engineering Student</p>
+                        <p class="text-xs text-slate-300 mt-1">UET Peshawar</p>
+                    </div>
+                </div>
+                <p class="mt-4 text-xs text-slate-200 flex items-center gap-2"><i class="fa-solid fa-bolt text-yellow-300"></i> Power Electronics Enthusiast</p>
+            </div>
+        </div>
+        <nav class="flex-1 overflow-y-auto py-4">
+            <ul class="space-y-1 text-sm px-4">
+                <li><button class="nav-item active text-left px-4 py-3" data-target="sec-intro"><i class="fa-solid fa-house-chimney w-4"></i> Introduction & Overview</button></li>
+                <li><button class="nav-item text-left px-4 py-3" data-target="sec-circuit"><i class="fa-solid fa-diagram-project w-4"></i> Circuit Configuration</button></li>
+                <li><button class="nav-item text-left px-4 py-3" data-target="sec-operation"><i class="fa-solid fa-wave-square w-4"></i> Principle of Operation</button></li>
+                <li><button class="nav-item text-left px-4 py-3" data-target="sec-conduction"><i class="fa-solid fa-route w-4"></i> Conduction Analysis</button></li>
+                <li><button class="nav-item text-left px-4 py-3" data-target="sec-math"><i class="fa-solid fa-square-root-variable w-4"></i> Mathematical Derivations</button></li>
+                <li><button class="nav-item text-left px-4 py-3" data-target="sec-interactive"><i class="fa-solid fa-chart-line w-4"></i> Waveforms & Harmonics</button></li>
+                <li><button class="nav-item text-left px-4 py-3" data-target="sec-matlab"><i class="fa-solid fa-cubes w-4"></i> MATLAB/Simulink Guide</button></li>
+                <li><button class="nav-item text-left px-4 py-3" data-target="sec-hardware"><i class="fa-solid fa-microchip w-4"></i> Hardware Implementation</button></li>
+                <li><button class="nav-item text-left px-4 py-3" data-target="sec-compare"><i class="fa-solid fa-scale-balanced w-4"></i> Comparisons & Applications</button></li>
+                <li><button class="nav-item text-left px-4 py-3" data-target="sec-viva"><i class="fa-solid fa-graduation-cap w-4"></i> Viva Prep & Summary</button></li>
+                <li><button class="nav-item text-left px-4 py-3" data-target="sec-skills"><i class="fa-solid fa-screwdriver-wrench w-4"></i> Skills</button></li>
+                <li><button class="nav-item text-left px-4 py-3" data-target="sec-author"><i class="fa-solid fa-user-tie w-4"></i> About Author</button></li>
+                <li><button class="nav-item text-left px-4 py-3" data-target="sec-contact"><i class="fa-solid fa-envelope-open-text w-4"></i> Contact</button></li>
+            </ul>
+        </nav>
+        <div class="border-t border-white/10 p-5 text-xs text-slate-300">
+            <p class="flex items-center gap-2"><i class="fa-solid fa-check-circle text-emerald-300"></i> GitHub Pages ready</p>
+            <p class="mt-1">Single-file HTML project</p>
+        </div>
+    </aside>
+
+    <main class="app-shell flex-1 h-full overflow-y-auto scroll-smooth relative" id="main-content">
+        <button id="mobile-menu-btn" class="md:hidden fixed top-4 right-4 bg-white/90 p-3 rounded-xl shadow-lg z-50 text-slate-800 border border-slate-200" type="button" aria-label="Open navigation menu">
+            <i class="fa-solid fa-bars"></i>
+        </button>
+
+        <div class="max-w-6xl mx-auto p-5 md:p-10 lg:p-12">
+
+            <section id="sec-intro" class="content-section block">
+                <!-- Hero section frames the academic module as a university-grade research presentation. -->
+                <div class="relative overflow-hidden rounded-[1.75rem] bg-[#081a2f] text-white p-6 md:p-10 mb-8 shadow-soft border border-white/10">
+                    <div class="absolute inset-0 opacity-30 bg-[linear-gradient(120deg,transparent_0_35%,rgba(0,166,214,0.42)_35.3%_35.8%,transparent_36.2%),linear-gradient(60deg,transparent_0_62%,rgba(246,183,60,0.35)_62.3%_62.8%,transparent_63.2%)]"></div>
+                    <div class="relative grid lg:grid-cols-[1.35fr_0.65fr] gap-8 items-center">
+                        <div>
+                            <p class="text-xs md:text-sm uppercase tracking-[0.28em] text-sky-200 mb-4">Power Electronics Research Module</p>
+                            <h2 class="text-4xl md:text-6xl font-serif font-bold leading-tight">Three Phase AC Voltage Controller</h2>
+                            <p class="mt-5 max-w-2xl text-slate-200 text-base md:text-lg">An IEEE-style educational portal for phase angle control, SCR conduction, harmonic behavior, MATLAB/Simulink modelling, and hardware implementation.</p>
+                            <div class="mt-7 flex flex-wrap gap-3 text-sm">
+                                <span class="rounded-full bg-white/10 px-4 py-2 border border-white/15"><i class="fa-solid fa-bolt mr-2 text-yellow-300"></i>SCR Control</span>
+                                <span class="rounded-full bg-white/10 px-4 py-2 border border-white/15"><i class="fa-solid fa-chart-area mr-2 text-sky-300"></i>Interactive Charts</span>
+                                <span class="rounded-full bg-white/10 px-4 py-2 border border-white/15"><i class="fa-solid fa-microchip mr-2 text-emerald-300"></i>Hardware Focus</span>
+                            </div>
+                        </div>
+                        <div class="glass-panel rounded-2xl p-5">
+                            <img src="avatar-square.jpg" alt="Muhammad Abbas" class="w-28 h-28 rounded-2xl object-cover ring-4 ring-sky-300/40 mb-5">
+                            <p class="text-sm uppercase tracking-[0.22em] text-sky-200">Presented by</p>
+                            <h3 class="text-2xl font-bold mt-2">Muhammad Abbas</h3>
+                            <p class="text-slate-200 mt-1">Electrical Engineering Student, UET Peshawar</p>
+                            <div class="mt-5 h-1.5 rounded-full bg-gradient-to-r from-sky-400 via-cyan-300 to-yellow-300"></div>
+                        </div>
+                    </div>
+                </div>
+                <header class="mb-8">
+                    <h2 class="text-3xl font-serif text-slate-900 mb-2">Three Phase AC Voltage Controllers</h2>
+                    <p class="text-lg text-slate-600">A comprehensive academic module on controlling RMS voltage for balanced R and RL loads.</p>
+                </header>
+                
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-stone-200 mb-8">
+                    <h3 class="text-xl font-bold text-sky-800 mb-4">What is a Three-Phase AC Voltage Controller?</h3>
+                    <p class="mb-4 text-slate-700">A Three-Phase AC Voltage Controller (also known as an AC voltage regulator) is a power electronics converter that converts a fixed AC voltage into a variable AC voltage at the same frequency. This is achieved by utilizing back-to-back (anti-parallel) connected Silicon Controlled Rectifiers (SCRs) or TRIACs in each phase.</p>
+                    <p class="text-slate-700">By controlling the firing angle (&alpha;) of these thyristors, the RMS value of the output voltage applied to the load is smoothly controlled from zero to the maximum supply voltage.</p>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-stone-200">
+                        <h4 class="font-bold text-slate-800 mb-3 flex items-center"><span class="text-sky-600 mr-2">&#9658;</span> Why it is Used</h4>
+                        <ul class="list-disc pl-5 space-y-2 text-sm text-slate-700">
+                            <li>To control the speed of induction motors (stator voltage control).</li>
+                            <li>For soft-starting of large AC motors to reduce inrush current.</li>
+                            <li>Industrial heating controls (e.g., resistive heating furnaces).</li>
+                            <li>Light dimming systems for large-scale facilities.</li>
+                            <li>On-load transformer tap changing.</li>
+                        </ul>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-stone-200">
+                        <h4 class="font-bold text-slate-800 mb-3 flex items-center"><span class="text-amber-600 mr-2">&#9658;</span> Controller vs. Rectifier</h4>
+                        <ul class="list-disc pl-5 space-y-2 text-sm text-slate-700">
+                            <li><strong>Output:</strong> Controller yields variable AC; Rectifier yields DC.</li>
+                            <li><strong>Frequency:</strong> Controller output frequency equals input frequency; Rectifier has DC with ripple frequency.</li>
+                            <li><strong>Topology:</strong> Controller uses anti-parallel SCRs per phase; Rectifier uses a bridge arrangement blocking reverse current.</li>
+                            <li><strong>Power Flow:</strong> Controllers are inherently bidirectional; basic rectifiers are unidirectional.</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="bg-slate-800 text-white p-6 rounded-xl shadow-sm">
+                    <h4 class="font-bold text-lg mb-4">Advantages & Disadvantages</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <h5 class="text-sky-300 font-semibold mb-2">Advantages</h5>
+                            <ul class="list-none space-y-1 text-sm text-slate-300">
+                                <li>&#10003; High efficiency (negligible conduction losses).</li>
+                                <li>&#10003; Compact size and solid-state reliability.</li>
+                                <li>&#10003; Smooth and continuous control.</li>
+                                <li>&#10003; Less maintenance compared to auto-transformers.</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h5 class="text-amber-400 font-semibold mb-2">Disadvantages</h5>
+                            <ul class="list-none space-y-1 text-sm text-slate-300">
+                                <li>&#10007; Introduces significant harmonics into supply and load.</li>
+                                <li>&#10007; Input power factor is poor at large firing angles.</li>
+                                <li>&#10007; Cannot change output frequency.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="sec-circuit" class="content-section hidden">
+                <header class="mb-8">
+                    <h2 class="text-3xl font-serif text-slate-900 mb-2">Circuit Configuration</h2>
+                    <p class="text-lg text-slate-600">Topology and current paths for Star and Delta connected loads.</p>
+                </header>
+
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-stone-200 mb-8">
+                    <h3 class="text-xl font-bold text-slate-800 mb-4">Anti-Parallel SCR Arrangement</h3>
+                    <p class="text-slate-700 mb-6">The core of the three-phase AC voltage controller is the use of two SCRs connected in anti-parallel (back-to-back) in each phase. Let's denote them as T1 & T4 for Phase A, T3 & T6 for Phase B, and T5 & T2 for Phase C.</p>
+                    
+                    <div class="bg-stone-50 p-8 rounded border border-stone-200 flex flex-col items-center justify-center mb-6 overflow-x-auto">
+                        <div class="text-center font-mono text-sm">
+                            <p class="mb-2">Phase A Supply &mdash;&mdash;&mdash; [ T1 &rarr; | &larr; T4 ] &mdash;&mdash;&mdash; Load A</p>
+                            <p class="mb-2">Phase B Supply &mdash;&mdash;&mdash; [ T3 &rarr; | &larr; T6 ] &mdash;&mdash;&mdash; Load B</p>
+                            <p class="mb-2">Phase C Supply &mdash;&mdash;&mdash; [ T5 &rarr; | &larr; T2 ] &mdash;&mdash;&mdash; Load C</p>
+                        </div>
+                        <p class="text-xs text-slate-500 mt-4 text-center">Odd numbered SCRs (T1, T3, T5) conduct positive half cycles.<br>Even numbered SCRs (T4, T6, T2) conduct negative half cycles.</p>
+                    </div>
+
+                    <h4 class="font-bold text-lg text-slate-800 mb-2">Star (Y) vs Delta (&Delta;) Loads</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <h5 class="font-semibold text-sky-700">Star Connected Load</h5>
+                            <p class="text-sm text-slate-700">In a star connection without a neutral wire (3-wire system), at least two SCRs in different phases must conduct simultaneously to establish a closed path for current to flow between lines. If only one SCR is gated, no current flows. Phase voltage applied to the load depends on whether 2 or 3 SCRs are conducting.</p>
+                        </div>
+                        <div>
+                            <h5 class="font-semibold text-amber-700">Delta Connected Load</h5>
+                            <p class="text-sm text-slate-700">In a delta connection, the phase load is directly connected across line voltages. Each anti-parallel pair controls the line voltage applied to the phase load. Current can circulate within the delta if not carefully controlled, leading to third harmonic currents being trapped inside the delta loop.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-sky-50 border-l-4 border-sky-600 p-6 rounded-r-xl">
+                    <h3 class="text-lg font-bold text-slate-800 mb-2">Resistive vs RL Load Behavior</h3>
+                    <p class="text-sm text-slate-700 mb-3"><strong>Resistive (R) Load:</strong> The current waveform is exactly identical in shape to the voltage waveform. Current instantly drops to zero when voltage crosses zero. Natural commutation occurs exactly at voltage zero-crossings.</p>
+                    <p class="text-sm text-slate-700"><strong>Inductive (RL) Load:</strong> Inductance opposes changes in current. Therefore, the load current lags the voltage. When the phase voltage crosses zero, the energy stored in the inductor keeps the SCR forward-biased, causing it to conduct beyond the zero-crossing angle (&beta; > &pi;). This limits the control range of the firing angle and requires continuous or wide gate pulses.</p>
+                </div>
+            </section>
+
+            <section id="sec-operation" class="content-section hidden">
+                <header class="mb-8">
+                    <h2 class="text-3xl font-serif text-slate-900 mb-2">Principle of Operation</h2>
+                    <p class="text-lg text-slate-600">Phase angle control and the significance of firing sequences.</p>
+                </header>
+
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-stone-200 mb-8">
+                    <h3 class="text-xl font-bold text-slate-800 mb-4">Phase Angle Control & Natural Commutation</h3>
+                    <p class="text-slate-700 mb-4">The output voltage is regulated by delaying the firing angle (&alpha;) of the SCRs relative to the zero-crossing of their respective phase voltages. Because we are dealing with AC, the SCRs automatically turn off (commutate) when the current falls below the holding current, typically near the voltage zero-crossing. This is known as <strong>Line Commutation</strong> or <strong>Natural Commutation</strong>.</p>
+                    
+                    <h4 class="font-bold text-lg text-slate-800 mb-2">The 60&deg; Separation Rule</h4>
+                    <p class="text-slate-700 mb-4">A complete AC cycle is 360&deg;. In a balanced three-phase system, we use 6 SCRs. To maintain symmetrical output waveforms and eliminate DC components, the firing pulses must be equally spaced. Therefore, the gate pulses are generated sequentially at intervals of: <br>
+                    <span class="inline-block bg-slate-100 px-3 py-1 mt-2 rounded font-mono text-sky-800 border border-slate-200">360&deg; / 6 = 60&deg;</span></p>
+                    <p class="text-sm text-slate-600">The standard firing sequence is T1 &rarr; T2 &rarr; T3 &rarr; T4 &rarr; T5 &rarr; T6. <br>T1 fires at &alpha;. T2 fires at &alpha;+60&deg;. T3 fires at &alpha;+120&deg;, and so on.</p>
+                </div>
+
+                <h3 class="text-2xl font-serif text-slate-900 mb-4">Operating Regions (Star-Connected Resistive Load)</h3>
+                <p class="text-slate-700 mb-4">The operation of a 3-wire star-connected controller is complex because the neutral point is floating. The potential of the neutral point shifts depending on how many SCRs are conducting. We divide the operation into three distinct regions based on &alpha;:</p>
+
+                <div class="mb-4">
+                    <div class="flex border-b border-stone-300">
+                        <button class="tab-btn active px-4 py-2 font-medium" onclick="switchTab('op-1', this)">Region I (0&deg; to 60&deg;)</button>
+                        <button class="tab-btn px-4 py-2 font-medium" onclick="switchTab('op-2', this)">Region II (60&deg; to 90&deg;)</button>
+                        <button class="tab-btn px-4 py-2 font-medium" onclick="switchTab('op-3', this)">Region III (90&deg; to 150&deg;)</button>
+                    </div>
+                </div>
+
+                <div id="op-1" class="tab-content block bg-white p-6 rounded-b-xl shadow-sm border border-t-0 border-stone-200">
+                    <h4 class="font-bold text-sky-700 mb-2">Region I: 0&deg; &le; &alpha; &le; 60&deg;</h4>
+                    <p class="text-slate-700 mb-3">In this region, the conduction alternates between <strong>3 SCRs</strong> and <strong>2 SCRs</strong>.</p>
+                    <ul class="list-disc pl-5 space-y-2 text-sm text-slate-700">
+                        <li><strong>When 3 SCRs conduct:</strong> The load neutral point connects to the supply neutral. The phase voltage across the load equals the supply phase voltage (e.g., V<sub>an_load</sub> = V<sub>an_supply</sub>).</li>
+                        <li><strong>When 2 SCRs conduct:</strong> One phase is open. The line voltage divides equally across the two conducting phases (e.g., V<sub>an_load</sub> = 0.5 * V<sub>ab</sub>).</li>
+                        <li>The transition happens continuously. For example, T1, T5, T6 might be conducting (3 SCRs). Then T5 turns off naturally, leaving T1 and T6 conducting (2 SCRs) until T2 is fired.</li>
+                    </ul>
+                </div>
+                <div id="op-2" class="tab-content hidden bg-white p-6 rounded-b-xl shadow-sm border border-t-0 border-stone-200">
+                    <h4 class="font-bold text-amber-600 mb-2">Region II: 60&deg; &le; &alpha; &le; 90&deg;</h4>
+                    <p class="text-slate-700 mb-3">In this region, exactly <strong>2 SCRs</strong> conduct at any given time.</p>
+                    <ul class="list-disc pl-5 space-y-2 text-sm text-slate-700">
+                        <li>Before the third SCR can be fired, one of the two currently conducting SCRs naturally commutates.</li>
+                        <li>Therefore, the load voltage is always half of the corresponding line voltage.</li>
+                        <li>The output voltage waveform has no intervals where it equals the phase voltage, and no zero-voltage intervals. It jumps from one line voltage fraction to another.</li>
+                    </ul>
+                </div>
+                <div id="op-3" class="tab-content hidden bg-white p-6 rounded-b-xl shadow-sm border border-t-0 border-stone-200">
+                    <h4 class="font-bold text-rose-600 mb-2">Region III: 90&deg; &le; &alpha; &le; 150&deg;</h4>
+                    <p class="text-slate-700 mb-3">In this region, the current becomes <strong>discontinuous</strong>. Either <strong>2 SCRs</strong> conduct or <strong>0 SCRs</strong> conduct.</p>
+                    <ul class="list-disc pl-5 space-y-2 text-sm text-slate-700">
+                        <li>When 2 SCRs are fired, current flows, but it drops to zero before the next SCR is fired.</li>
+                        <li>This creates "dead zones" where the load voltage is absolute zero.</li>
+                        <li>As &alpha; approaches 150&deg;, these dead zones widen until the output voltage becomes completely zero at &alpha; = 150&deg;. (For a resistive load, maximum possible &alpha; is 150&deg;).</li>
+                    </ul>
+                </div>
+            </section>
+
+            <section id="sec-conduction" class="content-section hidden">
+                <header class="mb-8">
+                    <h2 class="text-3xl font-serif text-slate-900 mb-2">Conduction Analysis</h2>
+                    <p class="text-lg text-slate-600">Detailed SCR sequence and timing charts.</p>
+                </header>
+                
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-stone-200 mb-8 overflow-x-auto">
+                    <h3 class="text-xl font-bold text-slate-800 mb-4">Standard 6-Pulse Conduction Sequence</h3>
+                    <table class="min-w-full text-sm text-left text-slate-600">
+                        <thead class="text-xs text-slate-700 uppercase bg-slate-100">
+                            <tr>
+                                <th class="px-4 py-3">Interval Angle (&omega;t)</th>
+                                <th class="px-4 py-3">Fired SCR</th>
+                                <th class="px-4 py-3">Conducting SCRs (Example for small &alpha;)</th>
+                                <th class="px-4 py-3">Active Current Path</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="border-b">
+                                <td class="px-4 py-3">&alpha; to &alpha;+60&deg;</td>
+                                <td class="px-4 py-3 font-bold">T1</td>
+                                <td class="px-4 py-3 text-sky-700">T1, T5, T6 (3 conducting)</td>
+                                <td class="px-4 py-3">Phase A (+) and Phase C (+) to Phase B (-)</td>
+                            </tr>
+                            <tr class="border-b bg-stone-50">
+                                <td class="px-4 py-3">&alpha;+60&deg; to &alpha;+120&deg;</td>
+                                <td class="px-4 py-3 font-bold">T2</td>
+                                <td class="px-4 py-3 text-sky-700">T1, T2, T6</td>
+                                <td class="px-4 py-3">Phase A (+) to Phase B (-) and Phase C (-)</td>
+                            </tr>
+                            <tr class="border-b">
+                                <td class="px-4 py-3">&alpha;+120&deg; to &alpha;+180&deg;</td>
+                                <td class="px-4 py-3 font-bold">T3</td>
+                                <td class="px-4 py-3 text-sky-700">T1, T2, T3</td>
+                                <td class="px-4 py-3">Phase A (+) and Phase B (+) to Phase C (-)</td>
+                            </tr>
+                            <tr class="border-b bg-stone-50">
+                                <td class="px-4 py-3">&alpha;+180&deg; to &alpha;+240&deg;</td>
+                                <td class="px-4 py-3 font-bold">T4</td>
+                                <td class="px-4 py-3 text-sky-700">T2, T3, T4</td>
+                                <td class="px-4 py-3">Phase B (+) to Phase A (-) and Phase C (-)</td>
+                            </tr>
+                            <tr class="border-b">
+                                <td class="px-4 py-3">&alpha;+240&deg; to &alpha;+300&deg;</td>
+                                <td class="px-4 py-3 font-bold">T5</td>
+                                <td class="px-4 py-3 text-sky-700">T3, T4, T5</td>
+                                <td class="px-4 py-3">Phase B (+) and Phase C (+) to Phase A (-)</td>
+                            </tr>
+                            <tr class="border-b bg-stone-50">
+                                <td class="px-4 py-3">&alpha;+300&deg; to &alpha;+360&deg;</td>
+                                <td class="px-4 py-3 font-bold">T6</td>
+                                <td class="px-4 py-3 text-sky-700">T4, T5, T6</td>
+                                <td class="px-4 py-3">Phase C (+) to Phase A (-) and Phase B (-)</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="bg-amber-50 p-6 rounded-xl border border-amber-200">
+                    <h3 class="font-bold text-amber-800 mb-2">Line Voltage Dominance Concept</h3>
+                    <p class="text-sm text-slate-700">In a 3-wire star load, because the neutral is isolated, current can only flow if it can travel out one phase and return through another. Thus, the actual driving force is the <strong>Line-to-Line Voltage</strong>. When calculating the phase voltage across a resistor in this setup, it is simply half the line voltage of the two conducting phases (e.g., V<sub>an</sub> = V<sub>ab</sub> / 2).</p>
+                </div>
+            </section>
+
+            <section id="sec-math" class="content-section hidden">
+                <header class="mb-8">
+                    <h2 class="text-3xl font-serif text-slate-900 mb-2">Mathematical Derivations</h2>
+                    <p class="text-lg text-slate-600">Rigorous RMS and Power equations for Star-Connected Resistive Load.</p>
+                </header>
+
+                <div class="space-y-6">
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-stone-200">
+                        <h3 class="text-xl font-bold text-sky-800 mb-3">1. RMS Output Phase Voltage (V<sub>o(rms)</sub>)</h3>
+                        <p class="text-sm text-slate-700 mb-4">Because the waveform shape changes drastically across the three regions, the integration bounds change. Let V<sub>s</sub> be the RMS phase supply voltage.</p>
+                        
+                        <div class="math-block mb-4">
+                            <strong>Region I (0 &le; &alpha; &le; 60&deg;):</strong><br>
+                            <i>V<sub>o(rms)</sub> = V<sub>s</sub> &radic;[ 1 - (3&alpha; / 2&pi;) + (3 sin(2&alpha;) / 4&pi;) ]</i>
+                        </div>
+                        <div class="math-block mb-4">
+                            <strong>Region II (60&deg; &le; &alpha; &le; 90&deg;):</strong><br>
+                            <i>V<sub>o(rms)</sub> = V<sub>s</sub> &radic;[ (1/2) + (3&radic;3 / 4&pi;) cos(2&alpha;) ]</i>
+                        </div>
+                        <div class="math-block">
+                            <strong>Region III (90&deg; &le; &alpha; &le; 150&deg;):</strong><br>
+                            <i>V<sub>o(rms)</sub> = V<sub>s</sub> &radic;[ (5/4) - (3&alpha; / 2&pi;) + (3 sin(2&alpha;) / 4&pi;) + (3&radic;3 cos(2&alpha;) / 4&pi;) ]</i>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-stone-200">
+                        <h3 class="text-xl font-bold text-sky-800 mb-3">2. RMS Load Current & Power</h3>
+                        <p class="text-sm text-slate-700 mb-2">For a purely resistive load (R) per phase:</p>
+                        <div class="math-block mb-4">
+                            <strong>RMS Phase Current:</strong><br>
+                            <i>I<sub>o(rms)</sub> = V<sub>o(rms)</sub> / R</i>
+                        </div>
+                        <div class="math-block mb-4">
+                            <strong>Total Three-Phase Real Power Delivered (P):</strong><br>
+                            <i>P = 3 &times; V<sub>o(rms)</sub> &times; I<sub>o(rms)</sub> = 3 &times; I<sub>o(rms)</sub><sup>2</sup> &times; R</i>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-stone-200">
+                        <h3 class="text-xl font-bold text-sky-800 mb-3">3. Power Factor Analysis</h3>
+                        <p class="text-sm text-slate-700 mb-2">In phase-controlled circuits with non-sinusoidal currents, the True Power Factor contains both displacement and distortion components.</p>
+                        <ul class="list-disc pl-5 space-y-2 text-sm text-slate-700 mb-4">
+                            <li><strong>Displacement Factor (DPF):</strong> Related to the phase shift of the fundamental current component. <i>DPF = cos(&phi;<sub>1</sub>)</i></li>
+                            <li><strong>Distortion Factor (DF):</strong> Related to harmonic content. <i>DF = I<sub>1(rms)</sub> / I<sub>(rms)</sub></i></li>
+                        </ul>
+                        <div class="math-block">
+                            <strong>True Power Factor (PF):</strong><br>
+                            <i>PF = P / S = (3 &times; V<sub>o(rms)</sub><sup>2</sup> / R) / (3 &times; V<sub>s</sub> &times; I<sub>o(rms)</sub>) = V<sub>o(rms)</sub> / V<sub>s</sub></i>
+                        </div>
+                        <p class="text-xs text-rose-600 mt-2 font-bold">Important Insight: Even with a purely resistive load, the input power factor decreases as &alpha; increases because the chopped waveform introduces reactive and harmonic power drawn from the source.</p>
+                    </div>
+                </div>
+            </section>
+
+            <section id="sec-interactive" class="content-section hidden">
+                <header class="mb-8">
+                    <h2 class="text-3xl font-serif text-slate-900 mb-2">Interactive Waveforms & Harmonics</h2>
+                    <p class="text-lg text-slate-600">Adjust the firing angle (&alpha;) to observe the effect on output voltage and Harmonic Distortion.</p>
+                </header>
+
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-stone-200 mb-8">
+                    <div class="flex flex-col md:flex-row items-center justify-between mb-6 bg-slate-50 p-4 rounded-lg">
+                        <div class="w-full md:w-1/2">
+                            <label for="alpha-slider" class="block font-bold text-slate-800 mb-2">Firing Angle (&alpha;): <span id="alpha-val" class="text-sky-600 text-xl">30</span>&deg;</label>
+                            <input type="range" id="alpha-slider" min="0" max="150" value="30" class="w-full h-2 bg-slate-300 rounded-lg appearance-none cursor-pointer">
+                            <div class="flex justify-between text-xs text-slate-500 mt-1">
+                                <span>0&deg;</span><span>60&deg;</span><span>90&deg;</span><span>150&deg;</span>
+                            </div>
+                        </div>
+                        <div class="w-full md:w-5/12 mt-4 md:mt-0 pl-0 md:pl-4 border-t md:border-t-0 md:border-l border-stone-300">
+                            <div class="grid grid-cols-2 gap-2 text-sm">
+                                <div class="text-slate-600">Operating Region:</div>
+                                <div id="calc-region" class="font-bold text-sky-700">Region I</div>
+                                <div class="text-slate-600">V<sub>rms</sub> (normalized):</div>
+                                <div id="calc-vrms" class="font-bold text-slate-800">0.98 V<sub>s</sub></div>
+                                <div class="text-slate-600">Approx. THD:</div>
+                                <div id="calc-thd" class="font-bold text-rose-600">12%</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Waveform Chart Container -->
+                    <div class="mb-8">
+                        <h3 class="font-bold text-slate-800 mb-2 text-center">Phase A Output Voltage vs Source Voltage</h3>
+                        <div class="chart-container">
+                            <canvas id="waveformChart"></canvas>
+                        </div>
+                        <p class="text-center text-xs text-slate-500 mt-2">Dashed: Source Phase A | Solid: Chopped Load Phase A. Note: Simplified visualization for 3-wire Star-R load.</p>
+                    </div>
+
+                    <!-- Harmonics Chart Container -->
+                    <div>
+                        <h3 class="font-bold text-slate-800 mb-2 text-center">Voltage Harmonic Spectrum</h3>
+                        <div class="chart-container">
+                            <canvas id="harmonicChart"></canvas>
+                        </div>
+                        <p class="text-center text-xs text-slate-500 mt-2">Harmonics generated due to non-sinusoidal chopped waveform (Triplen harmonics are zero in 3-wire systems).</p>
+                    </div>
+                </div>
+            </section>
+
+            <section id="sec-matlab" class="content-section hidden">
+                <header class="mb-8">
+                    <h2 class="text-3xl font-serif text-slate-900 mb-2">MATLAB/Simulink Implementation</h2>
+                    <p class="text-lg text-slate-600">A guide to designing and analyzing the controller in Simulink.</p>
+                </header>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div class="md:col-span-1 bg-white p-6 rounded-xl shadow-sm border border-stone-200">
+                        <h3 class="font-bold text-slate-800 mb-3 border-b pb-2">Required Blocks</h3>
+                        <ul class="text-sm space-y-2 text-slate-700">
+                            <li><strong>Source:</strong> Three-Phase Programmable Voltage Source</li>
+                            <li><strong>Switches:</strong> 6x Thyristor blocks (or Universal Bridge set to Thyristors)</li>
+                            <li><strong>Control:</strong> 6-Pulse Generator (synchronized)</li>
+                            <li><strong>Load:</strong> Three-Phase Series RLC Branch</li>
+                            <li><strong>Measurements:</strong> Three-Phase V-I Measurement, RMS block</li>
+                            <li><strong>Environment:</strong> powergui (Continuous or Discrete)</li>
+                        </ul>
+                    </div>
+                    <div class="md:col-span-2 bg-slate-900 p-6 rounded-xl shadow-sm text-slate-300">
+                        <h3 class="font-bold text-sky-400 mb-3">MATLAB Script: THD Calculation</h3>
+                        <pre class="text-xs font-mono overflow-x-auto"><code>% MATLAB Code to Calculate and Plot FFT
+fs = 10000; % Sampling frequency
+t = 0:1/fs:0.1; % Time vector
+f = 50; % Fundamental frequency
+
+% Simulated Output Voltage (simplified chopping logic)
+alpha = pi/3; % 60 degrees
+v_out = 311 * sin(2*pi*f*t); 
+v_out(mod(2*pi*f*t, pi) < alpha) = 0; 
+
+% FFT Analysis
+L = length(v_out);
+Y = fft(v_out);
+P2 = abs(Y/L);
+P1 = P2(1:L/2+1);
+P1(2:end-1) = 2*P1(2:end-1);
+freq = fs*(0:(L/2))/L;
+
+% Calculate THD
+fundamental = P1(find(freq==f,1));
+harmonics_rms = sqrt(sum(P1(freq>f & freq<1000).^2));
+THD = (harmonics_rms / fundamental) * 100;
+
+figure; bar(freq(1:50), P1(1:50)); 
+title(['Harmonic Spectrum, THD = ', num2str(THD), '%']);
+xlabel('f (Hz)'); ylabel('|P1(f)|');</code></pre>
+                    </div>
+                </div>
+
+                <div class="bg-amber-50 p-6 rounded-xl border border-amber-200">
+                    <h3 class="font-bold text-amber-800 mb-2">Simulink Pulse Generator Setup</h3>
+                    <p class="text-sm text-slate-700">To achieve phase control, use the synchronized 6-pulse generator. Set the frequency to match the source (50Hz/60Hz). The <strong>alpha block input</strong> takes the firing angle in degrees. Ensure the synchronization phase matches the phase shift of your source (usually Phase A = 0&deg;).</p>
+                </div>
+            </section>
+
+            <section id="sec-hardware" class="content-section hidden">
+                <header class="mb-8">
+                    <h2 class="text-3xl font-serif text-slate-900 mb-2">Practical Hardware Implementation</h2>
+                    <p class="text-lg text-slate-600">Bringing the theory to a physical printed circuit board.</p>
+                </header>
+
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-stone-200 mb-8">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div>
+                            <h3 class="text-lg font-bold text-slate-800 mb-3 text-sky-700">1. Isolation & Gate Driving</h3>
+                            <p class="text-sm text-slate-700 mb-2">Microcontrollers (e.g., Arduino, DSP) operate at 3.3V/5V, while the AC mains is 230V/400V. <strong>Galvanic isolation is strictly mandatory.</strong></p>
+                            <ul class="list-disc pl-5 text-sm text-slate-700 space-y-1">
+                                <li>Use <strong>Optocouplers</strong> (like MOC3021) for firing signals.</li>
+                                <li>Use Pulse Transformers for high dV/dt immunity.</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-bold text-slate-800 mb-3 text-sky-700">2. Synchronization (ZCD)</h3>
+                            <p class="text-sm text-slate-700 mb-2">To measure &alpha;, the controller must know when the AC waveform crosses zero.</p>
+                            <ul class="list-disc pl-5 text-sm text-slate-700 space-y-1">
+                                <li><strong>Zero Crossing Detector (ZCD)</strong> circuits use bridge rectifiers and opto-isolators (like 4N25) to send a pulse to the microcontroller interrupt pin exactly at 0&deg;, 180&deg;, 360&deg;.</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-bold text-slate-800 mb-3 text-sky-700">3. Protection Circuits</h3>
+                            <ul class="list-disc pl-5 text-sm text-slate-700 space-y-1">
+                                <li><strong>RC Snubber Networks:</strong> Placed in parallel with each SCR to protect against high <i>dV/dt</i> which can cause false triggering.</li>
+                                <li><strong>Inductors (Chokes):</strong> In series to protect against high <i>dI/dt</i> during turn-on.</li>
+                                <li><strong>Fast-acting Fuses:</strong> To protect SCRs from short-circuit currents.</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-bold text-slate-800 mb-3 text-sky-700">4. Thermal Management</h3>
+                            <p class="text-sm text-slate-700">Though efficient, SCRs drop ~1.5V when conducting. At 100A, that's 150W of heat per SCR. <strong>Large aluminum heat sinks</strong> with forced air cooling are required to maintain junction temperatures below 125&deg;C.</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="sec-compare" class="content-section hidden">
+                <header class="mb-8">
+                    <h2 class="text-3xl font-serif text-slate-900 mb-2">Comparisons & Applications</h2>
+                    <p class="text-lg text-slate-600">Contextualizing the AC Voltage Controller in modern industry.</p>
+                </header>
+
+                <div class="bg-white rounded-xl shadow-sm border border-stone-200 overflow-hidden mb-8">
+                    <table class="min-w-full text-sm text-left text-slate-700">
+                        <thead class="text-xs uppercase bg-slate-800 text-white">
+                            <tr>
+                                <th class="px-6 py-4">Converter Type</th>
+                                <th class="px-6 py-4">Output Type</th>
+                                <th class="px-6 py-4">Frequency Control?</th>
+                                <th class="px-6 py-4">Typical Application</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-stone-200">
+                            <tr class="hover:bg-stone-50">
+                                <td class="px-6 py-4 font-bold">AC Voltage Controller</td>
+                                <td class="px-6 py-4">Variable AC</td>
+                                <td class="px-6 py-4 text-rose-600">No (Fixed = Supply)</td>
+                                <td class="px-6 py-4">Soft starters, Heaters</td>
+                            </tr>
+                            <tr class="hover:bg-stone-50">
+                                <td class="px-6 py-4 font-bold">Controlled Rectifier</td>
+                                <td class="px-6 py-4">Variable DC</td>
+                                <td class="px-6 py-4">N/A (DC Output)</td>
+                                <td class="px-6 py-4">DC Motor Drives, HVDC</td>
+                            </tr>
+                            <tr class="hover:bg-stone-50">
+                                <td class="px-6 py-4 font-bold">Cycloconverter</td>
+                                <td class="px-6 py-4">Variable AC</td>
+                                <td class="px-6 py-4 text-amber-600">Yes (Steps down freq)</td>
+                                <td class="px-6 py-4">High-power slow AC motors</td>
+                            </tr>
+                            <tr class="hover:bg-stone-50">
+                                <td class="px-6 py-4 font-bold">PWM Inverter (VFD)</td>
+                                <td class="px-6 py-4">Variable AC</td>
+                                <td class="px-6 py-4 text-green-600">Yes (Fully variable)</td>
+                                <td class="px-6 py-4">Modern AC Motor Speed Control</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-stone-200">
+                    <h3 class="text-xl font-bold text-slate-800 mb-4">Research-Level Insights: Modern Improvements</h3>
+                    <p class="text-sm text-slate-700 mb-4">The traditional phase-controlled thyristor AC controller suffers from poor power factor and high low-order harmonics. Modern research and industrial upgrades focus on:</p>
+                    <ul class="list-disc pl-5 space-y-2 text-sm text-slate-700">
+                        <li><strong>PWM AC Choppers:</strong> Using fully controllable switches (IGBTs) instead of SCRs. This allows multiple chopping pulses per half-cycle, pushing harmonics to higher frequencies which are easier to filter, and dramatically improving the power factor.</li>
+                        <li><strong>AI-Based Firing Control:</strong> Using Neural Networks or Fuzzy Logic controllers to dynamically adjust &alpha; in real-time for non-linear varying loads (like arc furnaces) to optimize power quality.</li>
+                        <li><strong>Matrix Converters:</strong> The ultimate evolution, directly converting AC to AC with variable voltage and frequency without a DC link, replacing standard controllers in high-end applications.</li>
+                    </ul>
+                </div>
+            </section>
+
+            <section id="sec-viva" class="content-section hidden">
+                <header class="mb-8">
+                    <h2 class="text-3xl font-serif text-slate-900 mb-2">Viva Preparation & Summary</h2>
+                    <p class="text-lg text-slate-600">Quick-fire questions and essential takeaways.</p>
+                </header>
+
+                <div class="space-y-4 mb-8">
+                    <!-- Q1 -->
+                    <details class="group bg-white rounded-lg border border-stone-200 cursor-pointer">
+                        <summary class="font-bold text-slate-800 px-6 py-4 outline-none">Q: Why are gate pulses separated by exactly 60 degrees?</summary>
+                        <div class="px-6 pb-4 text-sm text-slate-700 border-t border-stone-100 pt-3">
+                            A complete cycle is 360&deg;. In a balanced 3-phase system, we utilize 6 thyristors (2 per phase). To maintain symmetry in the output voltage and ensure no DC offset is injected into the AC supply, the conduction must be evenly distributed. Therefore, 360&deg; / 6 = 60&deg; intervals.
+                        </div>
+                    </details>
+                    <!-- Q2 -->
+                    <details class="group bg-white rounded-lg border border-stone-200 cursor-pointer">
+                        <summary class="font-bold text-slate-800 px-6 py-4 outline-none">Q: What happens if you use a resistive-inductive (RL) load instead of purely resistive?</summary>
+                        <div class="px-6 pb-4 text-sm text-slate-700 border-t border-stone-100 pt-3">
+                            The inductor opposes a change in current, causing the load current to lag the voltage. When the phase voltage crosses zero, the stored energy in the inductor keeps the SCR forward-biased, delaying its natural commutation. The current continues to flow for an extinction angle &beta; > &pi;. This limits the control range; you cannot reduce the output voltage effectively if &alpha; < load phase angle (&phi;).
+                        </div>
+                    </details>
+                    <!-- Q3 -->
+                    <details class="group bg-white rounded-lg border border-stone-200 cursor-pointer">
+                        <summary class="font-bold text-slate-800 px-6 py-4 outline-none">Q: Why does the True Power Factor worsen as the firing angle &alpha; increases?</summary>
+                        <div class="px-6 pb-4 text-sm text-slate-700 border-t border-stone-100 pt-3">
+                            Increasing &alpha; chops larger portions of the waveform. This has two effects: 1) It shifts the fundamental component of the current, worsening the displacement factor. 2) It heavily distorts the current from a pure sine wave, drastically increasing the Total Harmonic Distortion (THD) and worsening the distortion factor. Since True PF = Displacement Factor &times; Distortion Factor, the overall PF drops significantly.
+                        </div>
+                    </details>
+                </div>
+
+                <div class="bg-sky-800 text-white p-6 rounded-xl shadow-sm">
+                    <h3 class="text-xl font-bold mb-4">Quick Revision Summary</h3>
+                    <ul class="list-disc pl-5 space-y-2 text-sm text-sky-100">
+                        <li><strong>Component:</strong> Back-to-back SCRs (6 total for 3-phase).</li>
+                        <li><strong>Function:</strong> Fixed AC to Variable AC (Constant Frequency).</li>
+                        <li><strong>Control Method:</strong> Phase Angle Control (&alpha;).</li>
+                        <li><strong>Commutation:</strong> Natural / Line Commutation.</li>
+                        <li><strong>Regions (Star, R-Load):</strong> I (0-60&deg;), II (60-90&deg;), III (90-150&deg;). Maximum control up to 150&deg;.</li>
+                        <li><strong>Major Drawback:</strong> High harmonics and poor input power factor at lower output voltages.</li>
+                    </ul>
+                </div>
+            </section>
+
+            <section id="sec-skills" class="content-section hidden">
+                <header class="mb-8">
+                    <h2 class="text-3xl font-serif text-slate-900 mb-2">Project Skills & Technical Competencies</h2>
+                    <p class="text-lg text-slate-600">Core engineering abilities demonstrated through this Three Phase AC Voltage Controller project.</p>
+                </header>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 mb-8">
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-stone-200">
+                        <i class="fa-solid fa-bolt text-3xl text-sky-600 mb-4"></i>
+                        <h3 class="font-bold text-slate-800 mb-2">Power Electronics</h3>
+                        <p class="text-sm text-slate-700">SCR operation, phase angle control, natural commutation, and RMS voltage regulation.</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-stone-200">
+                        <i class="fa-solid fa-chart-line text-3xl text-emerald-600 mb-4"></i>
+                        <h3 class="font-bold text-slate-800 mb-2">Waveform Analysis</h3>
+                        <p class="text-sm text-slate-700">Interactive visualization of chopped output voltage, firing angle regions, THD, and harmonics.</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-stone-200">
+                        <i class="fa-solid fa-cubes text-3xl text-amber-600 mb-4"></i>
+                        <h3 class="font-bold text-slate-800 mb-2">MATLAB/Simulink</h3>
+                        <p class="text-sm text-slate-700">Model development, pulse generator configuration, FFT analysis, and simulation validation.</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-stone-200">
+                        <i class="fa-solid fa-microchip text-3xl text-rose-600 mb-4"></i>
+                        <h3 class="font-bold text-slate-800 mb-2">Hardware Design</h3>
+                        <p class="text-sm text-slate-700">Gate isolation, zero-cross detection, snubber design, fuse selection, and thermal protection.</p>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-stone-200">
+                    <h3 class="text-xl font-bold text-slate-800 mb-5">Academic Presentation Strengths</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-slate-700">
+                        <p class="rounded-xl border border-stone-200 p-4"><i class="fa-solid fa-book-open text-sky-600 mr-2"></i>Clear theory-to-practice explanation for university assessment.</p>
+                        <p class="rounded-xl border border-stone-200 p-4"><i class="fa-solid fa-flask-vial text-emerald-600 mr-2"></i>Simulation-backed interpretation of firing angle behavior.</p>
+                        <p class="rounded-xl border border-stone-200 p-4"><i class="fa-solid fa-shield-halved text-amber-600 mr-2"></i>Professional attention to isolation, protection, and safety constraints.</p>
+                    </div>
+                </div>
+            </section>
+
+            <section id="sec-author" class="content-section hidden">
+                <header class="mb-8">
+                    <h2 class="text-3xl font-serif text-slate-900 mb-2">About Author</h2>
+                    <p class="text-lg text-slate-600">Professional academic profile for the project presenter.</p>
+                </header>
+
+                <div class="grid grid-cols-1 lg:grid-cols-[0.8fr_1.2fr] gap-8 items-stretch">
+                    <div class="bg-[#081a2f] text-white p-6 rounded-2xl shadow-soft border border-white/10">
+                        <img src="avatar-square.jpg" alt="Muhammad Abbas profile photograph" class="w-40 h-40 rounded-3xl object-cover ring-4 ring-sky-300/40 mx-auto mb-6" loading="lazy">
+                        <div class="text-center">
+                            <p class="text-xs uppercase tracking-[0.24em] text-sky-200">Author</p>
+                            <h3 class="text-3xl font-serif font-bold mt-2">Muhammad Abbas</h3>
+                            <p class="text-slate-200 mt-2">Electrical Engineering Student</p>
+                            <p class="text-slate-300">UET Peshawar</p>
+                        </div>
+                        <div class="mt-6 flex justify-center">
+                            <span class="rounded-full bg-white/10 px-4 py-2 text-sm border border-white/15"><i class="fa-solid fa-bolt mr-2 text-yellow-300"></i>Power Electronics Enthusiast</span>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-6 md:p-8 rounded-2xl shadow-sm border border-stone-200">
+                        <h3 class="text-2xl font-bold text-slate-800 mb-4">Academic Profile</h3>
+                        <p class="text-slate-700 mb-5">Muhammad Abbas is an Electrical Engineering student at UET Peshawar with a focused interest in power electronics, AC voltage regulation, controlled rectifiers, industrial motor control, and practical hardware implementation. This project presents a complete educational study of the Three Phase AC Voltage Controller from theory and mathematical analysis to simulation, harmonics, hardware, and viva preparation.</p>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                            <div class="rounded-xl bg-sky-50 border border-sky-100 p-4">
+                                <h4 class="font-bold text-sky-800 mb-2"><i class="fa-solid fa-graduation-cap mr-2"></i>Education</h4>
+                                <p class="text-slate-700">Electrical Engineering, UET Peshawar</p>
+                            </div>
+                            <div class="rounded-xl bg-amber-50 border border-amber-100 p-4">
+                                <h4 class="font-bold text-amber-800 mb-2"><i class="fa-solid fa-industry mr-2"></i>Interest Area</h4>
+                                <p class="text-slate-700">Power electronics, drives, protection, and simulation.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="sec-contact" class="content-section hidden">
+                <header class="mb-8">
+                    <h2 class="text-3xl font-serif text-slate-900 mb-2">Contact</h2>
+                    <p class="text-lg text-slate-600">Academic and professional contact details.</p>
+                </header>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="lg:col-span-2 bg-white p-6 rounded-xl shadow-sm border border-stone-200">
+                        <h3 class="text-xl font-bold text-slate-800 mb-4">Muhammad Abbas</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                            <div class="rounded-xl border border-stone-200 p-4"><i class="fa-solid fa-envelope text-sky-600 mr-2"></i>Email: muhammad.abbas@example.com</div>
+                            <div class="rounded-xl border border-stone-200 p-4"><i class="fa-solid fa-phone text-emerald-600 mr-2"></i>Phone: +92 300 0000000</div>
+                            <div class="rounded-xl border border-stone-200 p-4"><i class="fa-brands fa-github text-slate-700 mr-2"></i>GitHub: MuhammadAbbas</div>
+                            <div class="rounded-xl border border-stone-200 p-4"><i class="fa-brands fa-linkedin text-sky-700 mr-2"></i>LinkedIn: Muhammad Abbas</div>
+                            <div class="rounded-xl border border-stone-200 p-4"><i class="fa-solid fa-location-dot text-rose-600 mr-2"></i>Institution: UET Peshawar</div>
+                            <div class="rounded-xl border border-stone-200 p-4"><i class="fa-solid fa-bolt text-amber-600 mr-2"></i>Field: Power Electronics</div>
+                        </div>
+                    </div>
+                    <div class="bg-[#081a2f] text-white p-6 rounded-xl shadow-soft border border-white/10">
+                        <h3 class="text-xl font-bold mb-4">Academic Profile</h3>
+                        <ul class="space-y-3 text-sm text-slate-200">
+                            <li><i class="fa-solid fa-user-graduate text-sky-300 mr-2"></i>Electrical Engineering Student</li>
+                            <li><i class="fa-solid fa-building-columns text-emerald-300 mr-2"></i>University of Engineering & Technology Peshawar</li>
+                            <li><i class="fa-solid fa-screwdriver-wrench text-yellow-300 mr-2"></i>Power Electronics Enthusiast</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+            <footer class="mt-12 mb-2 rounded-2xl bg-[#081a2f] text-white p-6 md:p-8 border border-white/10 shadow-soft">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div>
+                        <p class="text-xs uppercase tracking-[0.24em] text-sky-200">University Project Portal</p>
+                        <h2 class="text-2xl font-serif font-bold mt-2">Three Phase AC Voltage Controller</h2>
+                        <p class="text-sm text-slate-300 mt-2">Prepared by Muhammad Abbas, Electrical Engineering Student, UET Peshawar.</p>
+                    </div>
+                    <div class="flex gap-3 text-lg">
+                        <span class="h-10 w-10 rounded-full bg-white/10 grid place-items-center"><i class="fa-solid fa-bolt"></i></span>
+                        <span class="h-10 w-10 rounded-full bg-white/10 grid place-items-center"><i class="fa-solid fa-wave-square"></i></span>
+                        <span class="h-10 w-10 rounded-full bg-white/10 grid place-items-center"><i class="fa-solid fa-microchip"></i></span>
+                    </div>
+                </div>
+            </footer>
+
+        </div>
+    </main>
+
+    <script>
+        // --- Application State and Layout Controls ---
+        const navItems = document.querySelectorAll('.nav-item');
+        const sections = document.querySelectorAll('.content-section');
+        const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+        const sidebar = document.getElementById('sidebar');
+        const mainContent = document.getElementById('main-content');
+        const darkModeToggle = document.getElementById('dark-mode-toggle');
+        const pageLoader = document.getElementById('page-loader');
+
+        const savedTheme = localStorage.getItem('theme');
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const shouldUseDark = savedTheme ? savedTheme === 'dark' : prefersDark;
+
+        if (shouldUseDark) {
+            document.documentElement.classList.add('dark');
+        }
+
+        function syncThemeIcon() {
+            const icon = darkModeToggle.querySelector('i');
+            const isDark = document.documentElement.classList.contains('dark');
+            icon.className = isDark ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
+        }
+
+        syncThemeIcon();
+
+        darkModeToggle.addEventListener('click', () => {
+            document.documentElement.classList.toggle('dark');
+            localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+            syncThemeIcon();
+            updateCharts();
+        });
+
+        navItems.forEach(item => {
+            item.addEventListener('click', () => {
+                const targetId = item.getAttribute('data-target');
+                showSection(targetId);
+            });
+        });
+
+        // Shows one content section at a time while keeping the sidebar state in sync.
+        function showSection(targetId) {
+            navItems.forEach(nav => nav.classList.toggle('active', nav.getAttribute('data-target') === targetId));
+
+            sections.forEach(sec => {
+                const isTarget = sec.id === targetId;
+                sec.classList.toggle('hidden', !isTarget);
+                sec.classList.toggle('block', isTarget);
+            });
+
+            mainContent.scrollTo({ top: 0, behavior: 'smooth' });
+
+            if (window.innerWidth < 768) {
+                sidebar.classList.add('-translate-x-full');
+            }
+
+            if (targetId === 'sec-interactive') {
+                requestAnimationFrame(updateCharts);
+            }
+        }
+
+        mobileMenuBtn.addEventListener('click', () => {
+            sidebar.classList.toggle('-translate-x-full');
+        });
+
+        function syncResponsiveSidebar() {
+            if (window.innerWidth < 768) {
+                sidebar.classList.add('-translate-x-full', 'fixed', 'inset-y-0', 'left-0');
+            } else {
+                sidebar.classList.remove('-translate-x-full', 'fixed', 'inset-y-0', 'left-0');
+            }
+        }
+
+        syncResponsiveSidebar();
+        window.addEventListener('resize', syncResponsiveSidebar);
+
+        // --- Tab Logic ---
+        function switchTab(tabId, btnElement) {
+            const tabs = btnElement.parentElement.querySelectorAll('.tab-btn');
+            tabs.forEach(t => {
+                t.classList.remove('active', 'border-b-2', 'border-sky-600', 'text-sky-600');
+            });
+            btnElement.classList.add('active', 'border-b-2', 'border-sky-600', 'text-sky-600');
+
+            const contents = btnElement.parentElement.parentElement.parentElement.querySelectorAll('.tab-content');
+            contents.forEach(c => {
+                c.classList.remove('block');
+                c.classList.add('hidden');
+            });
+            document.getElementById(tabId).classList.remove('hidden');
+            document.getElementById(tabId).classList.add('block');
+        }
+
+        // --- Interactive Waveform & Harmonic Logic (Chart.js) ---
+        const alphaSlider = document.getElementById('alpha-slider');
+        const alphaValDisplay = document.getElementById('alpha-val');
+        const calcRegion = document.getElementById('calc-region');
+        const calcVrms = document.getElementById('calc-vrms');
+        const calcThd = document.getElementById('calc-thd');
+
+        let waveformChartInstance = null;
+        let harmonicChartInstance = null;
+
+        function generateData(alphaDeg) {
+            const alphaRad = alphaDeg * (Math.PI / 180);
+            const dataPoints = 360;
+            const labels = [];
+            const sourceVolt = [];
+            const loadVolt = [];
+            
+            let vrmsSquareSum = 0;
+
+            for (let i = 0; i <= dataPoints; i++) {
+                labels.push(i);
+                const thetaRad = i * (Math.PI / 180);
+                const v_source = Math.sin(thetaRad);
+                sourceVolt.push(v_source);
+
+                let v_out = 0;
+                
+                // Highly simplified visual approximation of phase angle chopping for educational purpose
+                // Accurate 3-phase star R-load logic requires solving 3 piecewise equations simultaneously.
+                // For this visualization, we simulate the 'chopping' effect on a single phase.
+                
+                const wt_mod = i % 180; 
+                if (wt_mod >= alphaDeg && wt_mod < 180) {
+                    if(alphaDeg <= 60) {
+                        // Region 1 visual approx
+                        v_out = v_source * 0.9; // Scale to show it's slightly lower due to line vs phase sharing
+                    } else if (alphaDeg <= 90) {
+                        // Region 2 visual approx
+                        v_out = v_source * 0.866; // Sqrt(3)/2 approx line voltage share
+                    } else {
+                        // Region 3 visual approx
+                        v_out = v_source; 
+                    }
+                } else {
+                    v_out = 0;
+                }
+                
+                // Force zero crossing gaps for realism
+                if (Math.abs(v_source) < 0.05 && alphaDeg > 0) v_out = 0;
+
+                loadVolt.push(v_out);
+                vrmsSquareSum += v_out * v_out;
+            }
+
+            const vrms = Math.sqrt(vrmsSquareSum / dataPoints);
+
+            // Generate Harmonics (Approximation for visualization)
+            // Real THD requires FFT. We use a heuristic mathematical curve for visualization.
+            const harmonics = [];
+            const harmonicLabels = ['Fund (50Hz)', '5th (250Hz)', '7th (350Hz)', '11th (550Hz)', '13th (650Hz)'];
+            
+            const fundamental = vrms; 
+            harmonics.push(fundamental);
+            
+            let thd_sum_sq = 0;
+            // Harmonic amplitudes increase as alpha increases
+            const h5 = fundamental * (alphaDeg/150) * 0.3;
+            const h7 = fundamental * (alphaDeg/150) * 0.2;
+            const h11 = fundamental * (alphaDeg/150) * 0.1;
+            const h13 = fundamental * (alphaDeg/150) * 0.05;
+
+            harmonics.push(h5); thd_sum_sq += h5*h5;
+            harmonics.push(h7); thd_sum_sq += h7*h7;
+            harmonics.push(h11); thd_sum_sq += h11*h11;
+            harmonics.push(h13); thd_sum_sq += h13*h13;
+
+            const thd = fundamental === 0 ? 0 : (Math.sqrt(thd_sum_sq) / fundamental) * 100;
+
+            return { labels, sourceVolt, loadVolt, vrms, harmonicLabels, harmonics, thd };
+        }
+
+        function updateCharts() {
+            if (!alphaSlider || typeof Chart === 'undefined') return;
+
+            const alpha = parseInt(alphaSlider.value);
+            alphaValDisplay.innerText = alpha;
+
+            let region = "Region I";
+            if (alpha > 60 && alpha <= 90) region = "Region II";
+            if (alpha > 90) region = "Region III";
+            if (alpha >= 150) region = "Cutoff (Zero Output)";
+            calcRegion.innerText = region;
+
+            const data = generateData(alpha);
+            
+            calcVrms.innerText = data.vrms.toFixed(2) + " Vs";
+            calcThd.innerText = data.thd.toFixed(1) + "%";
+
+            const isDark = document.documentElement.classList.contains('dark');
+            const gridColor = isDark ? 'rgba(148, 163, 184, 0.18)' : 'rgba(148, 163, 184, 0.28)';
+            const tickColor = isDark ? '#cbd5e1' : '#475569';
+            const titleColor = isDark ? '#e2e8f0' : '#1e293b';
+
+            if (waveformChartInstance) waveformChartInstance.destroy();
+            const ctxW = document.getElementById('waveformChart').getContext('2d');
+            waveformChartInstance = new Chart(ctxW, {
+                type: 'line',
+                data: {
+                    labels: data.labels,
+                    datasets: [
+                        {
+                            label: 'Source Voltage',
+                            data: data.sourceVolt,
+                            borderColor: isDark ? '#64748b' : '#94a3b8',
+                            borderDash: [6, 6],
+                            borderWidth: 2,
+                            pointRadius: 0,
+                            fill: false,
+                            tension: 0.18
+                        },
+                        {
+                            label: 'Load Voltage (Phase A)',
+                            data: data.loadVolt,
+                            borderColor: isDark ? '#38bdf8' : '#006fb9',
+                            backgroundColor: isDark ? 'rgba(56, 189, 248, 0.14)' : 'rgba(0, 111, 185, 0.12)',
+                            borderWidth: 3,
+                            pointRadius: 0,
+                            fill: true,
+                            stepped: false,
+                            tension: 0.18
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: { duration: 420, easing: 'easeOutQuart' },
+                    interaction: { mode: 'index', intersect: false },
+                    scales: {
+                        x: {
+                            title: { display: true, text: 'Electrical Angle (Degrees)', color: titleColor, font: { weight: '700' } },
+                            ticks: { stepSize: 60, color: tickColor },
+                            grid: { color: gridColor }
+                        },
+                        y: {
+                            title: { display: true, text: 'Amplitude (pu)', color: titleColor, font: { weight: '700' } },
+                            ticks: { color: tickColor },
+                            grid: { color: gridColor },
+                            min: -1.2,
+                            max: 1.2
+                        }
+                    },
+                    plugins: {
+                        legend: { labels: { color: titleColor, usePointStyle: true, boxWidth: 8 } },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            backgroundColor: isDark ? '#0f172a' : '#ffffff',
+                            titleColor: titleColor,
+                            bodyColor: tickColor,
+                            borderColor: gridColor,
+                            borderWidth: 1
+                        }
+                    }
+                }
+            });
+
+            if (harmonicChartInstance) harmonicChartInstance.destroy();
+            const ctxH = document.getElementById('harmonicChart').getContext('2d');
+            harmonicChartInstance = new Chart(ctxH, {
+                type: 'bar',
+                data: {
+                    labels: data.harmonicLabels,
+                    datasets: [{
+                        label: 'Amplitude',
+                        data: data.harmonics,
+                        backgroundColor: ['#006fb9', '#00a6d6', '#f6b73c', '#ef4444', '#7c3aed'],
+                        borderColor: isDark ? 'rgba(255,255,255,0.18)' : 'rgba(15,23,42,0.08)',
+                        borderWidth: 1,
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: { duration: 420, easing: 'easeOutQuart' },
+                    scales: {
+                        x: {
+                            ticks: { color: tickColor },
+                            grid: { display: false }
+                        },
+                        y: {
+                            title: { display: true, text: 'Magnitude (pu)', color: titleColor, font: { weight: '700' } },
+                            ticks: { color: tickColor },
+                            grid: { color: gridColor },
+                            min: 0,
+                            max: 1
+                        }
+                    },
+                    plugins: {
+                        legend: { labels: { color: titleColor, usePointStyle: true, boxWidth: 8 } },
+                        tooltip: {
+                            backgroundColor: isDark ? '#0f172a' : '#ffffff',
+                            titleColor: titleColor,
+                            bodyColor: tickColor,
+                            borderColor: gridColor,
+                            borderWidth: 1
+                        }
+                    }
+                }
+            });
+        }
+
+        alphaSlider.addEventListener('input', updateCharts);
+        
+        // Initial setup. A timeout fallback prevents CDN delays from trapping the loader.
+        setTimeout(() => pageLoader.classList.add('is-hidden'), 1400);
+        window.addEventListener('load', () => {
+            pageLoader.classList.add('is-hidden');
+
+            // Force hidden state reset except first
+            sections.forEach((sec, idx) => {
+                if(idx !== 0) {
+                    sec.classList.remove('block');
+                    sec.classList.add('hidden');
+                }
+            });
+            showSection('sec-intro');
+            updateCharts();
+        });
+
+    </script>
+</body>
+</html>
